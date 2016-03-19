@@ -6,8 +6,13 @@ Android Developer Tools (ADT) is a plugin for the Eclipse IDE that extends the c
 
 The Android Studio IDE is currently not as mature as the ADT Eclipse plugin was especially when it comes to compile and debug native C/C++ applications using the NDK. This update is based on the 24.2.0 version of ADT and adds support for native debugging on 64-bit CPU equipped devices.
 
-## Changelog
-#### Version 24.2.0-20160214
+## <a name="changelog"></a>Changelog
+#### Version [24.2.0-20160319](http://khaled-lakehal.com/ADT/ADT-24.2.0-20160319.zip)
+- Added support for NDK r11.
+- Improved the installation procedure of gdbserver on device.
+- Removed binary files from Git LFS and added an external download link for each release.
+
+#### Version [24.2.0-20160214](http://khaled-lakehal.com/ADT/ADT-24.2.0-20160214.zip)
 - Based on ADT version 24.2.0.
 - Added support for native debugging of 64-bit applications on 64-bit CPU architectures (arm64-v8a, x86_64, mips64).
 - Added support for native debugging of 32-bit applications on 64-bit CPU architectures.
@@ -36,3 +41,7 @@ The ADT plugin was tested with the latest Mars (4.5) version of the Eclipse IDE.
 > **Why GDB quits when I try to add a breakpoint?**
 
 Enable the non-stop mode in GDB by activating the corresponding option at _Preferences_ -> _C/C++_ -> _Debug_ -> _GDB_.
+
+> **Where do I get the download link of the binary files?**
+
+You can download each release version at the [Changelog](#changelog) section.
