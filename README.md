@@ -11,7 +11,7 @@ The Android Studio IDE is currently not as mature as the ADT Eclipse plugin was 
 - Added support for the latest Eclipse version (Neon).
 - Added some missing paths to the generated gdb command file _gdb.init_.
 - Tested with the latest NDK version (r12b).
-- Uploaded old binary files and converted them to GitHub releases.
+- Used the GitHub release feature to upload binary files.
 
 #### Version [24.2.0-20160515]
 - Added support for the upcoming NDK r12 (tested with r12 beta 1). Do not use r11 for native debugging as it came with a broken gdb support.
@@ -67,4 +67,4 @@ You can download it from GitHub in the _releases_ section. The file name format 
 
 > **Where do I get the download link of an older release?**
 
-You can find all the releases hosted here on GitHub or on my personal server at: http://khaled-lakehal.com/ADT/.
+You can find all of the plugin releases archived on my personal server at: http://khaled-lakehal.com/ADT/.
