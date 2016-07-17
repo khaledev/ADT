@@ -1,0 +1,566 @@
+diff -Naur '--exclude=.git' studio-1.2-release/sdk/eclipse/artifacts/bundles/ide.product my-adt/sdk/eclipse/artifacts/bundles/ide.product
+--- studio-1.2-release/sdk/eclipse/artifacts/bundles/ide.product	2016-05-14 03:50:24.600538926 +0200
++++ my-adt/sdk/eclipse/artifacts/bundles/ide.product	2016-07-17 00:40:20.919086784 +0200
+@@ -1,7 +1,7 @@
+ <?xml version="1.0" encoding="UTF-8"?>
+ <?pde version="3.5"?>
+ 
+-<product name="Eclipse IDE for Android Developers" uid="adtproduct" id="com.android.ide.eclipse.adt.package.adtproduct" application="org.eclipse.ui.ide.workbench" version="24.2.0.qualifier" useFeatures="true" includeLaunchers="true">
++<product name="Eclipse IDE for Android Developers" uid="adtproduct" id="com.android.ide.eclipse.adt.package.adtproduct" application="org.eclipse.ui.ide.workbench" version="24.2.0.qualifier" useFeatures="true" includeLaunchers="false">
+ 
+    <aboutInfo>
+       <image path="/plugin-adt-package/adt-about.png"/>
+diff -Naur '--exclude=.git' studio-1.2-release/sdk/eclipse/artifacts/bundles/monitor.product my-adt/sdk/eclipse/artifacts/bundles/monitor.product
+--- studio-1.2-release/sdk/eclipse/artifacts/bundles/monitor.product	2016-05-14 03:50:24.600538926 +0200
++++ my-adt/sdk/eclipse/artifacts/bundles/monitor.product	2016-07-17 00:40:20.919086784 +0200
+@@ -1,7 +1,7 @@
+ <?xml version="1.0" encoding="UTF-8"?>
+ <?pde version="3.5"?>
+ 
+-<product name="monitor" uid="monitorproduct" id="com.android.ide.eclipse.monitor.product" application="com.android.ide.eclipse.monitor.Application" version="24.2.0.qualifier" useFeatures="true" includeLaunchers="true">
++<product name="monitor" uid="monitorproduct" id="com.android.ide.eclipse.monitor.product" application="com.android.ide.eclipse.monitor.Application" version="24.2.0.qualifier" useFeatures="true" includeLaunchers="false">
+ 
+ 
+    <configIni use="default">
+diff -Naur '--exclude=.git' studio-1.2-release/sdk/eclipse/plugins/com.android.ide.eclipse.adt.package/about.properties my-adt/sdk/eclipse/plugins/com.android.ide.eclipse.adt.package/about.properties
+--- studio-1.2-release/sdk/eclipse/plugins/com.android.ide.eclipse.adt.package/about.properties	2016-05-14 03:50:24.604564038 +0200
++++ my-adt/sdk/eclipse/plugins/com.android.ide.eclipse.adt.package/about.properties	2016-07-17 00:40:20.000000000 +0200
+@@ -1,6 +1,10 @@
+ blurb=Android Developer Tools\n\
+ \n\
+-Build: {0}\n\
++Build: {featureVersion}\n\
+ \n\
+ Copyright (c) The Android Open Source Project.\n\
+-Visit http://developer.android.com and http://source.android.com
++Visit http://developer.android.com and http://source.android.com\n\
++\n\
++Updated by Khaled Lakehal.\n\
++Visit http://github.com/khaledev/ADT
++
+diff -Naur '--exclude=.git' studio-1.2-release/sdk/eclipse/plugins/com.android.ide.eclipse.ndk/src/com/android/ide/eclipse/ndk/internal/launch/GdbServerTask.java my-adt/sdk/eclipse/plugins/com.android.ide.eclipse.ndk/src/com/android/ide/eclipse/ndk/internal/launch/GdbServerTask.java
+--- studio-1.2-release/sdk/eclipse/plugins/com.android.ide.eclipse.ndk/src/com/android/ide/eclipse/ndk/internal/launch/GdbServerTask.java	2016-05-14 03:50:24.721292272 +0200
++++ my-adt/sdk/eclipse/plugins/com.android.ide.eclipse.ndk/src/com/android/ide/eclipse/ndk/internal/launch/GdbServerTask.java	2016-07-17 00:40:20.919086784 +0200
+@@ -29,6 +29,7 @@
+ public class GdbServerTask implements Runnable {
+     private IDevice mDevice;
+     private String mRunAs;
++    private String mExecPath;
+     private String mSocket;
+     private int mPid;
+     private CountDownLatch mAttachLatch;
+@@ -47,10 +48,11 @@
+      * @param pid pid of task to attach to
+      * @param attachLatch latch to notify when gdbserver gets attached to the task
+      */
+-    public GdbServerTask(IDevice device, String runAsPackage, String socketName, int pid,
++    public GdbServerTask(IDevice device, String runAsPackage, String executePath, String socketName, int pid,
+             CountDownLatch attachLatch) {
+         mDevice = device;
+         mRunAs = runAsPackage;
++        mExecPath = executePath;
+         mSocket = socketName;
+         mPid = pid;
+         mAttachLatch = attachLatch;
+@@ -65,8 +67,8 @@
+     @Override
+     public void run() {
+         // Launch gdbserver on the device.
+-        String command = String.format("run-as %s lib/gdbserver +%s --attach %d",
+-                mRunAs, mSocket, mPid);
++        String command = String.format("run-as %s %s/gdbserver +%s --attach %d",
++                mRunAs, mExecPath, mSocket, mPid);
+         try {
+             mDevice.executeShellCommand(command, mOutputReceiver, 0);
+         } catch (Exception e) {
+diff -Naur '--exclude=.git' studio-1.2-release/sdk/eclipse/plugins/com.android.ide.eclipse.ndk/src/com/android/ide/eclipse/ndk/internal/launch/NdkDebuggerTab.java my-adt/sdk/eclipse/plugins/com.android.ide.eclipse.ndk/src/com/android/ide/eclipse/ndk/internal/launch/NdkDebuggerTab.java
+--- studio-1.2-release/sdk/eclipse/plugins/com.android.ide.eclipse.ndk/src/com/android/ide/eclipse/ndk/internal/launch/NdkDebuggerTab.java	2016-05-14 03:50:24.721292272 +0200
++++ my-adt/sdk/eclipse/plugins/com.android.ide.eclipse.ndk/src/com/android/ide/eclipse/ndk/internal/launch/NdkDebuggerTab.java	2016-07-17 00:40:20.919086784 +0200
+@@ -231,7 +231,7 @@
+ 
+         // check gdb init path
+         String gdbInit = mGdbInitPathText.getText().trim();
+-        if (!gdbInit.isEmpty()) {
++        if (!gdbInit.equals(NdkLaunchConstants.DEFAULT_GDBINIT)) {
+             File f = new File(gdbInit);
+             if (!f.exists() || !f.isFile()) {
+                 setErrorMessage("Invalid gdbinit location.");
+@@ -262,9 +262,7 @@
+     public void initializeFrom(ILaunchConfiguration config) {
+         mGdbPathText.setText(getAttribute(config, NdkLaunchConstants.ATTR_NDK_GDB,
+                 NdkLaunchConstants.DEFAULT_GDB));
+-        mGdbInitPathText.setText(getAttribute(config,
+-                IGDBLaunchConfigurationConstants.ATTR_GDB_INIT,
+-                NdkLaunchConstants.DEFAULT_GDBINIT));
++        mGdbInitPathText.setText(NdkLaunchConstants.DEFAULT_GDBINIT);
+         mGdbRemotePortText.setText(getAttribute(config, IGDBLaunchConfigurationConstants.ATTR_PORT,
+                 NdkLaunchConstants.DEFAULT_GDB_PORT));
+ 
+diff -Naur '--exclude=.git' studio-1.2-release/sdk/eclipse/plugins/com.android.ide.eclipse.ndk/src/com/android/ide/eclipse/ndk/internal/launch/NdkGdbLaunchDelegate.java my-adt/sdk/eclipse/plugins/com.android.ide.eclipse.ndk/src/com/android/ide/eclipse/ndk/internal/launch/NdkGdbLaunchDelegate.java
+--- studio-1.2-release/sdk/eclipse/plugins/com.android.ide.eclipse.ndk/src/com/android/ide/eclipse/ndk/internal/launch/NdkGdbLaunchDelegate.java	2016-05-14 03:50:24.721292272 +0200
++++ my-adt/sdk/eclipse/plugins/com.android.ide.eclipse.ndk/src/com/android/ide/eclipse/ndk/internal/launch/NdkGdbLaunchDelegate.java	2016-07-17 00:40:20.919086784 +0200
+@@ -16,6 +16,7 @@
+ 
+ package com.android.ide.eclipse.ndk.internal.launch;
+ 
++import com.android.SdkConstants;
+ import com.android.annotations.NonNull;
+ import com.android.annotations.Nullable;
+ import com.android.ddmlib.AdbCommandRejectedException;
+@@ -44,7 +45,11 @@
+ import com.android.ide.eclipse.ndk.internal.NdkVariables;
+ import com.android.sdklib.AndroidVersion;
+ import com.android.sdklib.IAndroidTarget;
++import com.android.sdklib.devices.Abi;
++import com.android.sdklib.repository.local.LocalPlatformPkgInfo;
++import com.google.common.base.Charsets;
+ import com.google.common.base.Joiner;
++import com.google.common.io.Files;
+ 
+ import org.eclipse.cdt.core.model.ICProject;
+ import org.eclipse.cdt.debug.core.CDebugUtils;
+@@ -56,7 +61,6 @@
+ import org.eclipse.core.runtime.CoreException;
+ import org.eclipse.core.runtime.IPath;
+ import org.eclipse.core.runtime.IProgressMonitor;
+-import org.eclipse.core.runtime.Path;
+ import org.eclipse.core.variables.IStringVariableManager;
+ import org.eclipse.core.variables.IValueVariable;
+ import org.eclipse.core.variables.VariablesPlugin;
+@@ -66,13 +70,19 @@
+ import org.eclipse.debug.core.ILaunchConfigurationWorkingCopy;
+ import org.eclipse.jface.dialogs.Dialog;
+ 
++import java.io.BufferedReader;
++import java.io.File;
++import java.io.FileReader;
+ import java.io.IOException;
+ import java.util.ArrayList;
++import java.util.Arrays;
+ import java.util.Collection;
+ import java.util.Collections;
+ import java.util.List;
+ import java.util.concurrent.CountDownLatch;
+ import java.util.concurrent.TimeUnit;
++import java.util.regex.Matcher;
++import java.util.regex.Pattern;
+ 
+ @SuppressWarnings("restriction")
+ public class NdkGdbLaunchDelegate extends GdbLaunchDelegate {
+@@ -197,18 +207,20 @@
+         monitor.setTaskName(Messages.NdkGdbLaunchDelegate_Action_ObtainDeviceABI);
+         String deviceAbi1 = device.getProperty("ro.product.cpu.abi");   //$NON-NLS-1$
+         String deviceAbi2 = device.getProperty("ro.product.cpu.abi2");  //$NON-NLS-1$
++        String deviceAbiList = device.getProperty("ro.product.cpu.abilist"); // a new introduced build property to get a list of supported ABIs
+ 
+         // get the abi that is supported by both the device and the application
+-        NativeAbi compatAbi = getCompatibleAbi(deviceAbi1, deviceAbi2, appAbis);
++        NativeAbi compatAbi = getCompatibleAbi(deviceAbi1, deviceAbi2, deviceAbiList, appAbis);
+         if (compatAbi == null) {
+             AdtPlugin.printErrorToConsole(project,
+                     Messages.NdkGdbLaunchDelegate_LaunchError_NoCompatibleAbi);
+             AdtPlugin.printErrorToConsole(project,
+                     String.format("ABI's supported by the application: %s", JOINER.join(appAbis)));
+             AdtPlugin.printErrorToConsole(project,
+-                    String.format("ABI's supported by the device: %s, %s",      //$NON-NLS-1$
++                    String.format("ABI's supported by the device: %s, %s, %s",      //$NON-NLS-1$
+                             deviceAbi1,
+-                            deviceAbi2));
++                            deviceAbi2,
++                            deviceAbiList));
+             return false;
+         }
+ 
+@@ -256,17 +268,81 @@
+             }
+         }
+ 
+-        // pull app_process & libc from the device
++        // pull some binaries and libraries from the device
+         IPath solibFolder = project.getLocation().append("obj/local").append(compatAbi.getAbi());
+         try {
+-            pull(device, "/system/bin/app_process", solibFolder);   //$NON-NLS-1$
+-            pull(device, "/system/lib/libc.so", solibFolder);       //$NON-NLS-1$
++            final String sysAppProcess = "app_process";
++            final String[] sysBinNames = {
++                    sysAppProcess, "linker"
++            };
++            final String[] sysLibNames = {
++                    "libc.so", "libm.so", "libdl.so"
++            };
++
++            final String sysBinPath = "/system/bin/%1$s%2$s"; // /system/bin/name{64}
++            final String sysLibPath = "/system/lib%2$s/%1$s"; // /system/lib{64}/name.so
++
++            // pull the binaries
++            for (String sysBinName : sysBinNames) {
++                String param = "";
++                if (isDevice64(device)) {
++                    if (isApplication64(compatAbi)) {
++                        param = "64";
++                    } else if (sysBinName.equals(sysAppProcess)) {
++                        param = "32";
++                    }
++                }
++
++                pull(device, String.format(sysBinPath, sysBinName, param), solibFolder,
++                        sysBinName);
++            }
++
++            // pull the libraries
++            for (String sysLibName : sysLibNames) {
++                String param = "";
++                if (isDevice64(device)) {
++                    if (isApplication64(compatAbi)) {
++                        param = "64";
++                    }
++                }
++
++                pull(device, String.format(sysLibPath, sysLibName, param), solibFolder,
++                        sysLibName);
++            }
+         } catch (Exception e) {
+             AdtPlugin.printErrorToConsole(project,
+                     Messages.NdkGdbLaunchDelegate_LaunchError_PullFileError, e);
+             return false;
+         }
+ 
++        // create a new gdb setup file compatible with newer versions of gdb included in NDK >= r11
++        try {
++            IPath gdbFolder = project.getLocation().append("libs").append(compatAbi.getAbi());
++
++            File gdbInitFile = new File(gdbFolder.toString(), SdkConstants.FN_GDB_INIT);
++            File gdbSetupFile = new File(gdbFolder.toString(), SdkConstants.FN_GDB_SETUP);
++
++            BufferedReader gdbSetupFileReader = new BufferedReader(new FileReader(gdbSetupFile));
++
++            StringBuilder gdbSetupFileContent = new StringBuilder();
++            String line;
++            while ((line = gdbSetupFileReader.readLine()) != null) {
++                gdbSetupFileContent.append(line);
++                gdbSetupFileContent.append(System.lineSeparator());
++                if (line.contains("solib-search-path")) {
++                    gdbSetupFileContent.append(line.replace("solib-search-path", "solib-absolute-prefix"));
++                    gdbSetupFileContent.append(System.lineSeparator());
++                }
++            }
++
++            gdbSetupFileReader.close();
++
++            Files.write(gdbSetupFileContent.toString(), gdbInitFile, Charsets.UTF_8);
++        } catch (Exception e) {
++            AdtPlugin.printErrorToConsole(project,
++                    "Can not create the new gdb initialization file!", e);
++        }
++
+         // wait for a couple of seconds for activity to be launched
+         monitor.setTaskName(Messages.NdkGdbLaunchDelegate_Action_WaitingForActivity);
+         try {
+@@ -279,10 +355,21 @@
+         Client app = device.getClient(manifestData.getPackage());
+         int pid = app.getClientData().getPid();
+ 
++        // get application's execution directory
++        String execDir = null;
++        try {
++            execDir = getExecDirectory(device, manifestData.getPackage(), compatAbi, 5,
++                    TimeUnit.SECONDS);
++        } catch (Exception e) {
++            AdtPlugin.printErrorToConsole(project,
++                    Messages.NdkGdbLaunchDelegate_LaunchError_ObtainingAppFolder, e);
++            return false;
++        }
++
+         // launch gdbserver
+         monitor.setTaskName(Messages.NdkGdbLaunchDelegate_Action_LaunchingGdbServer);
+         CountDownLatch attachLatch = new CountDownLatch(1);
+-        GdbServerTask gdbServer = new GdbServerTask(device, manifestData.getPackage(),
++        GdbServerTask gdbServer = new GdbServerTask(device, manifestData.getPackage(), execDir,
+                 DEBUG_SOCKET, pid, attachLatch);
+         new Thread(gdbServer,
+                 String.format("gdbserver for %s", manifestData.getPackage())).start();  //$NON-NLS-1$
+@@ -368,10 +455,10 @@
+         }
+     }
+ 
+-    private void pull(IDevice device, String remote, IPath solibFolder) throws
+-                        SyncException, IOException, AdbCommandRejectedException, TimeoutException {
+-        String remoteFileName = new Path(remote).toFile().getName();
+-        String targetFile = solibFolder.append(remoteFileName).toString();
++    private void pull(IDevice device, String remote, IPath solibFolder, String fileName)
++            throws SyncException, IOException, AdbCommandRejectedException, TimeoutException {
++        AdtPlugin.printToConsole("Pulling", remote);
++        String targetFile = solibFolder.append(fileName).toString();
+         device.pullFile(remote, targetFile);
+     }
+ 
+@@ -379,8 +466,13 @@
+             IProject project, NativeAbi compatAbi, IProgressMonitor monitor) throws CoreException {
+         ILaunchConfigurationWorkingCopy wcopy = config.getWorkingCopy();
+ 
+-        String toolchainPrefix = NdkHelper.getToolchainPrefix(project, compatAbi, monitor);
+-        String gdb = toolchainPrefix + "gdb";   //$NON-NLS-1$
++        String gdb;
++        IPath gdbPath = NdkHelper.getPathToGdb();
++        if (gdbPath.toFile().exists()) {
++            gdb = gdbPath.toString();
++        } else {
++            gdb = NdkHelper.getToolchainPrefix(project, compatAbi, monitor) + "gdb";
++        }
+ 
+         IStringVariableManager manager = VariablesPlugin.getDefault().getStringVariableManager();
+         IValueVariable ndkGdb = manager.newValueVariable(NdkVariables.NDK_GDB,
+@@ -414,6 +506,12 @@
+         wcopy.setAttribute(IGDBLaunchConfigurationConstants.ATTR_DEBUGGER_SOLIB_PATH,
+                 fixedSolibPaths);
+ 
++        // fix path to gdb setup file
++        String gdbInitPath = wcopy.getAttribute(NdkLaunchConstants.ATTR_NDK_GDBINIT,
++                NdkLaunchConstants.DEFAULT_GDBINIT);
++        wcopy.setAttribute(IGDBLaunchConfigurationConstants.ATTR_GDB_INIT,
++                elaborateExpression(manager, gdbInitPath));
++
+         manager.removeVariables(ndkVars);
+ 
+         return wcopy.doSave();
+@@ -468,11 +566,29 @@
+         }
+     }
+ 
+-    private NativeAbi getCompatibleAbi(String deviceAbi1, String deviceAbi2,
+-                                Collection<NativeAbi> appAbis) {
+-        for (NativeAbi abi: appAbis) {
+-            if (abi.getAbi().equals(deviceAbi1) || abi.getAbi().equals(deviceAbi2)) {
+-                return abi;
++    private NativeAbi getCompatibleAbi(String deviceAbi1, String deviceAbi2, String deviceAbiList,
++            Collection<NativeAbi> appAbis) {
++        Collection<String> devicesAbis;
++
++        if (deviceAbiList != null) {
++            devicesAbis = new ArrayList<String>(Arrays.asList(deviceAbiList.split(",")));
++        } else {
++            devicesAbis = new ArrayList<String>();
++        }
++
++        if (deviceAbi1 != null) {
++            devicesAbis.add(deviceAbi1);
++        }
++
++        if (deviceAbi2 != null) {
++            devicesAbis.add(deviceAbi2);
++        }
++
++        for (String deviceAbi : devicesAbis) {
++            for (NativeAbi appAbi : appAbis) {
++                if (appAbi.getAbi().equals(deviceAbi)) {
++                    return appAbi;
++                }
+             }
+         }
+ 
+@@ -503,4 +619,65 @@
+         commandCompleteLatch.await(timeout, timeoutUnit);
+         return receiver.getOutput().trim();
+     }
++
++    private String getExecDirectory(IDevice device, String app, NativeAbi compatAbi, long timeout,
++            TimeUnit timeoutUnit) throws TimeoutException, AdbCommandRejectedException,
++            ShellCommandUnresponsiveException, IOException, InterruptedException {
++        if (getApiLevel(device) >= 23) { // selinux (Marshmallow and above) prevents execution of binaries directly from /data/local/tmp
++            final String command = "pm list packages -f";
++
++            CountDownLatch commandCompleteLatch = new CountDownLatch(1);
++            CollectingOutputReceiver receiver = new CollectingOutputReceiver(commandCompleteLatch);
++            device.executeShellCommand(command, receiver);
++            commandCompleteLatch.await(timeout, timeoutUnit);
++
++            String lines[] = receiver.getOutput().split("\\r?\\n");
++            Pattern pattern = Pattern.compile("^package:(.+?)=(.+)$");
++
++            for (String line : lines) {
++                Matcher matcher = pattern.matcher(line);
++
++                if (matcher.matches()) {
++                    String packagePath = matcher.group(1);
++                    String packageName = matcher.group(2);
++
++                    if (packageName.equals(app)) {
++                        Abi abi = Abi.getEnum(compatAbi.getAbi());
++                        return String.format("%s/lib/%s",
++                                packagePath.substring(0, packagePath.lastIndexOf('/')),
++                                (abi != null) ? abi.getCpuArch() : SdkConstants.CPU_ARCH_ARM);
++                    }
++                }
++            }
++        }
++
++        return "lib";
++    }
++
++    private boolean isApplication64(NativeAbi abi) {
++        return abi.getAbi().equals(SdkConstants.ABI_ARM64_V8A)
++                || abi.getAbi().equals(SdkConstants.ABI_INTEL_ATOM64)
++                || abi.getAbi().equals(SdkConstants.ABI_MIPS64);
++    }
++
++    private boolean isDevice64(IDevice device) {
++        String abilist64 = device.getProperty("ro.product.cpu.abilist64");
++        return (abilist64 != null) && (abilist64.length() > 0);
++    }
++
++    private int getApiLevel(IDevice device) {
++        int apiNumber;
++        String apiString = device.getProperty(LocalPlatformPkgInfo.PROP_VERSION_SDK);
++        if (apiString != null) {
++            try {
++                apiNumber = Integer.parseInt(apiString);
++            } catch (NumberFormatException e) {
++                apiNumber = 0;
++            }
++        } else {
++            apiNumber = 0;
++        }
++        return apiNumber;
++    }
++
+ }
+diff -Naur '--exclude=.git' studio-1.2-release/sdk/eclipse/plugins/com.android.ide.eclipse.ndk/src/com/android/ide/eclipse/ndk/internal/launch/NdkLaunchConstants.java my-adt/sdk/eclipse/plugins/com.android.ide.eclipse.ndk/src/com/android/ide/eclipse/ndk/internal/launch/NdkLaunchConstants.java
+--- studio-1.2-release/sdk/eclipse/plugins/com.android.ide.eclipse.ndk/src/com/android/ide/eclipse/ndk/internal/launch/NdkLaunchConstants.java	2016-05-14 03:50:24.721292272 +0200
++++ my-adt/sdk/eclipse/plugins/com.android.ide.eclipse.ndk/src/com/android/ide/eclipse/ndk/internal/launch/NdkLaunchConstants.java	2016-07-17 00:40:20.919086784 +0200
+@@ -16,6 +16,7 @@
+ 
+ package com.android.ide.eclipse.ndk.internal.launch;
+ 
++import com.android.SdkConstants;
+ import com.android.ide.eclipse.ndk.internal.Activator;
+ import com.android.ide.eclipse.ndk.internal.NdkVariables;
+ 
+@@ -28,7 +29,11 @@
+ 
+     public static final String DEFAULT_GDB_PORT = "5039";                       //$NON-NLS-1$
+     public static final String DEFAULT_GDB = getVar(NdkVariables.NDK_GDB);
+-    public static final String DEFAULT_GDBINIT = "";                            //$NON-NLS-1$
++    public static final String DEFAULT_GDBINIT =
++            String.format("%1$s/libs/%2$s/%3$s",
++                    getVar(NdkVariables.NDK_PROJECT),
++                    getVar(NdkVariables.NDK_COMPAT_ABI),
++                    SdkConstants.FN_GDB_INIT);
+     public static final String DEFAULT_PROGRAM =
+             String.format("%1$s/obj/local/%2$s/app_process",                    //$NON-NLS-1$
+                     getVar(NdkVariables.NDK_PROJECT),
+diff -Naur '--exclude=.git' studio-1.2-release/sdk/eclipse/plugins/com.android.ide.eclipse.ndk/src/com/android/ide/eclipse/ndk/internal/NativeAbi.java my-adt/sdk/eclipse/plugins/com.android.ide.eclipse.ndk/src/com/android/ide/eclipse/ndk/internal/NativeAbi.java
+--- studio-1.2-release/sdk/eclipse/plugins/com.android.ide.eclipse.ndk/src/com/android/ide/eclipse/ndk/internal/NativeAbi.java	2016-05-14 03:50:24.717267160 +0200
++++ my-adt/sdk/eclipse/plugins/com.android.ide.eclipse.ndk/src/com/android/ide/eclipse/ndk/internal/NativeAbi.java	2016-07-17 00:40:20.923110493 +0200
+@@ -21,8 +21,11 @@
+ public enum NativeAbi {
+     armeabi(SdkConstants.ABI_ARMEABI),
+     armeabi_v7a(SdkConstants.ABI_ARMEABI_V7A),
++    arm64_v8a(SdkConstants.ABI_ARM64_V8A),
+     mips(SdkConstants.ABI_MIPS),
+-    x86(SdkConstants.ABI_INTEL_ATOM);
++    mips64(SdkConstants.ABI_MIPS64),
++    x86(SdkConstants.ABI_INTEL_ATOM),
++    x86_64(SdkConstants.ABI_INTEL_ATOM64);
+ 
+     private final String mAbi;
+ 
+diff -Naur '--exclude=.git' studio-1.2-release/sdk/eclipse/plugins/com.android.ide.eclipse.ndk/src/com/android/ide/eclipse/ndk/internal/NdkHelper.java my-adt/sdk/eclipse/plugins/com.android.ide.eclipse.ndk/src/com/android/ide/eclipse/ndk/internal/NdkHelper.java
+--- studio-1.2-release/sdk/eclipse/plugins/com.android.ide.eclipse.ndk/src/com/android/ide/eclipse/ndk/internal/NdkHelper.java	2016-05-14 03:50:24.717267160 +0200
++++ my-adt/sdk/eclipse/plugins/com.android.ide.eclipse.ndk/src/com/android/ide/eclipse/ndk/internal/NdkHelper.java	2016-07-17 00:40:20.923110493 +0200
+@@ -45,6 +45,8 @@
+     private static final String MAKE = "make";                                      //$NON-NLS-1$
+     private static final String CORE_MAKEFILE_PATH = "/build/core/build-local.mk";  //$NON-NLS-1$
+ 
++    private static final String GDB = "gdb";
++
+     /**
+      * Obtain the ABI's the application is compatible with.
+      * The ABI's are obtained by reading the result of the following command:
+@@ -127,6 +129,10 @@
+         return getFullPathTo(MAKE);
+     }
+ 
++    public static IPath getPathToGdb() {
++        return getFullPathTo(GDB);
++    }
++
+     /**
+      * Obtain a path to the utilities prebuilt folder in NDK. This is typically
+      * "${NdkRoot}/prebuilt/<platform>/bin/". If the executable is not found, it simply returns
+diff -Naur '--exclude=.git' studio-1.2-release/sdk/eclipse/plugins/com.android.ide.eclipse.ndk/src/com/android/ide/eclipse/ndk/internal/NdkManager.java my-adt/sdk/eclipse/plugins/com.android.ide.eclipse.ndk/src/com/android/ide/eclipse/ndk/internal/NdkManager.java
+--- studio-1.2-release/sdk/eclipse/plugins/com.android.ide.eclipse.ndk/src/com/android/ide/eclipse/ndk/internal/NdkManager.java	2016-05-14 03:50:24.717267160 +0200
++++ my-adt/sdk/eclipse/plugins/com.android.ide.eclipse.ndk/src/com/android/ide/eclipse/ndk/internal/NdkManager.java	2016-07-17 00:40:20.923110493 +0200
+@@ -51,7 +51,7 @@
+             return false;
+ 
+         // Must contain the ndk-build script which we call to build
+-        if (!new File(dir, "ndk-build").isFile()) //$NON-NLS-1$
++        if (!new File(dir, "ndk-build").isFile() && !new File(dir, "ndk-build.cmd").isFile()) //$NON-NLS-1$
+             return false;
+ 
+         return true;
+diff -Naur '--exclude=.git' studio-1.2-release/tools/base/build-system/builder/src/main/java/com/android/builder/internal/packaging/Packager.java my-adt/tools/base/build-system/builder/src/main/java/com/android/builder/internal/packaging/Packager.java
+--- studio-1.2-release/tools/base/build-system/builder/src/main/java/com/android/builder/internal/packaging/Packager.java	2016-05-14 03:50:29.651938847 +0200
++++ my-adt/tools/base/build-system/builder/src/main/java/com/android/builder/internal/packaging/Packager.java	2016-07-17 00:40:20.923110493 +0200
+@@ -528,7 +528,8 @@
+                                     (PATTERN_NATIVELIB_EXT.matcher(lib.getName()).matches() ||
+                                         (mJniDebugMode &&
+                                             (SdkConstants.FN_GDBSERVER.equals(libName) ||
+-                                             SdkConstants.FN_GDB_SETUP.equals(libName))))) {
++                                             SdkConstants.FN_GDB_SETUP.equals(libName) ||
++                                             SdkConstants.FN_GDB_INIT.equals(libName))))) {
+ 
+                                 String path =
+                                     SdkConstants.FD_APK_NATIVE_LIBS + "/" +
+diff -Naur '--exclude=.git' studio-1.2-release/tools/base/build-system/gradle-experimental/src/main/groovy/com/android/build/gradle/tasks/GdbSetupTask.groovy my-adt/tools/base/build-system/gradle-experimental/src/main/groovy/com/android/build/gradle/tasks/GdbSetupTask.groovy
+--- studio-1.2-release/tools/base/build-system/gradle-experimental/src/main/groovy/com/android/build/gradle/tasks/GdbSetupTask.groovy	2016-05-14 03:50:29.744257487 +0200
++++ my-adt/tools/base/build-system/gradle-experimental/src/main/groovy/com/android/build/gradle/tasks/GdbSetupTask.groovy	2016-07-17 00:40:20.923110493 +0200
+@@ -51,6 +51,7 @@
+ 
+         StringBuilder sb = new StringBuilder()
+ 
++        sb.append("set solib-absolute-prefix ${outputDir.toString()}\n")
+         sb.append("set solib-search-path ${outputDir.toString()}\n")
+         sb.append("directory ")
+         sb.append("${ndkHandler.getSysroot(binary.targetPlatform)}/usr/include ")
+diff -Naur '--exclude=.git' studio-1.2-release/tools/base/common/src/main/java/com/android/SdkConstants.java my-adt/tools/base/common/src/main/java/com/android/SdkConstants.java
+--- studio-1.2-release/tools/base/common/src/main/java/com/android/SdkConstants.java	2016-05-14 03:50:29.924880911 +0200
++++ my-adt/tools/base/common/src/main/java/com/android/SdkConstants.java	2016-07-17 00:40:20.923110493 +0200
+@@ -245,6 +245,7 @@
+      */
+     public static final String FN_GDBSERVER = "gdbserver";              //$NON-NLS-1$
+     public static final String FN_GDB_SETUP = "gdb.setup";              //$NON-NLS-1$
++    public static final String FN_GDB_INIT = "gdb.init"; // a custom gdb.setup
+ 
+     /** global Android proguard config file */
+     public static final String FN_ANDROID_PROGUARD_FILE = "proguard-android.txt";   //$NON-NLS-1$
+diff -Naur '--exclude=.git' studio-1.2-release/tools/base/sdk-common/src/main/java/com/android/ide/common/rendering/LayoutLibrary.java my-adt/tools/base/sdk-common/src/main/java/com/android/ide/common/rendering/LayoutLibrary.java
+--- studio-1.2-release/tools/base/sdk-common/src/main/java/com/android/ide/common/rendering/LayoutLibrary.java	2016-05-14 03:50:30.161640403 +0200
++++ my-adt/tools/base/sdk-common/src/main/java/com/android/ide/common/rendering/LayoutLibrary.java	2016-07-17 00:40:20.923110493 +0200
+@@ -207,7 +207,8 @@
+                         if (api > Bridge.API_CURRENT) {
+                             status = LoadStatus.FAILED;
+                             message = String.format(
+-                                    "This version of the rendering library is more recent than your version of %1$s. Please update %1$s", toolName);
++                                    "This version of the rendering library is more recent than your version of %s. Please set the Android version to %d or less when rendering layouts in Eclipse.",
++                                    toolName, 22);
+                         }
+                     }
+                 }
+diff -Naur '--exclude=.git' studio-1.2-release/tools/build.gradle my-adt/tools/build.gradle
+--- studio-1.2-release/tools/build.gradle	2016-05-14 03:50:30.434481737 +0200
++++ my-adt/tools/build.gradle	2016-07-17 00:40:20.923110493 +0200
+@@ -1,10 +1,10 @@
+ apply plugin: 'clone-artifacts'
+ 
+-// Currently, the minimum requirement to run Android SDK tools is Java 1.6
+-// So make sure that we are compiling with 1.6
++// Currently, the minimum requirement to run Android SDK tools is Java 1.8
++// So make sure that we are compiling with 1.8
+ task('checkJavaVersion') << {
+     def jvmVersion = System.getProperty('java.version')
+-    def requiredVersion = System.getenv('JAVA_FOR_TESTS') ?: '1.6'
++    def requiredVersion = System.getenv('JAVA_FOR_TESTS') ?: '1.8'
+     if (!jvmVersion.startsWith(requiredVersion)) {
+         throw new RuntimeException("Tools need to be compiled with Java $requiredVersion, you are using Java $jvmVersion.")
+     }
