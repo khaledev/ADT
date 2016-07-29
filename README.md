@@ -63,7 +63,7 @@ Enable the non-stop mode in GDB by activating the corresponding option at _Prefe
 
 > **Why do I get the message "com.android.ddmlib.SyncException: Permission denied"?**
 
-This is because the ADT plugin was unable to get the application installation directory on your device. The "run-as" command shell used to get the application path fails on some known devices such as those from Samsung. See the related issue on the Android issue tracker at: https://code.google.com/p/android/issues/detail?id=206581. We suggest you to use another device to debug your application.
+This is because the ADT plugin was unable to get the application installation directory on your device. The "run-as" adb shell command used to get the application path fails on some known devices such as those from Samsung. See the related issue on the Android issue tracker at: https://code.google.com/p/android/issues/detail?id=206581. We suggest you to use another device to debug your application.
 
 > **Where do I get the download link of the latest release?**
 
