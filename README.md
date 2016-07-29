@@ -7,6 +7,10 @@ Android Developer Tools (ADT) is a plugin for the Eclipse IDE that extends the c
 The Android Studio IDE is currently not as mature as the ADT Eclipse plugin was especially when it comes to compile and debug native C/C++ applications using the NDK. This update is based on an unreleased 24.2.0 version of ADT and adds support for native development and debugging with the latest NDK releases supporting all known CPU architectures.
 
 ## Changelog
+#### Version [24.2.0-20160729]
+- Fixed output parsing of shell commands on Android Nougat. Eclipse now recognizes devices with Android 7.0 and lets you debug applications on it.
+- Tested with the latest beta version of the NDK (r13 beta 1).
+
 #### Version [24.2.0-20160716]
 - Added support for the latest Eclipse version (Neon).
 - Added some missing paths to the generated gdb command file _gdb.init_.
