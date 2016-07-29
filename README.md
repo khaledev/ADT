@@ -8,7 +8,7 @@ The Android Studio IDE is currently not as mature as the ADT Eclipse plugin was 
 
 ## Changelog
 #### Version [24.2.0-20160729]
-- Fixed output parsing of shell commands on Android Nougat. Eclipse now recognizes devices with Android 7.0 and lets you debug applications on it.
+- Fixed output parsing of adb shell commands on Android Nougat. ADT now recognizes devices with Android 7.0 and lets you debug applications on the latest Android preview release.
 - Tested with the latest beta version of the NDK (r13 beta 1).
 
 #### Version [24.2.0-20160716]
